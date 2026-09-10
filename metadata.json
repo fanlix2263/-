@@ -1,0 +1,6 @@
+{
+  "name": "设计师配色提取与调色板生成工具",
+  "description": "支持图片智能提取配色、色彩和弦理论调色板生成、WCAG对比度检测以及导出HEX、CSS、Tailwind与SCSS代码。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
