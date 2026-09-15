@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>多 Agent 协同与交叉校验体系规范指南</title>
+  <style>
+    :root {
+      --bg-primary: #f8fafc;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --border-color: #e2e8f0;
+      --primary: #2563eb;
+      --primary-light: #eff6ff;
+      --success: #16a34a;
+      --success-light: #f0fdf4;
+      --danger: #dc2626;
+      --danger-light: #fef2f2;
+      --warning: #d97706;
+      --warning-light: #fffbeb;
+      --code-bg: #1e293b;
+      --code-text: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      line-height: 1.68;
+      padding: 32px 16px;
+    }
+
+    .container {
+      max-width: 980px;
+      margin: 0 auto;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 40px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    header {
+      border-bottom: 2px solid var(--border-color);
+      padding-bottom: 24px;
+      margin-bottom: 32px;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 15px;
+      color: var(--text-muted);
+    }
+
+    h2 {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-main);
+      margin: 32px 0 16px;
+      padding-left: 12px;
+      border-left: 4px solid var(--primary);
+    }
+
+    h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 20px 0 10px;
+    }
+
+    p, li {
+      font-size: 15px;
+      color: var(--text-main);
+      margin-bottom: 10px;
+    }
+
+    ul, ol {
+      padding-left: 24px;
+      margin-bottom: 16px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 6px;
+    }
+
+    .badge-blue { background: var(--primary-light); color: var(--primary); }
+    .badge-red { background: var(--danger-light); color: var(--danger); }
+    .badge-green { background: var(--success-light); color: var(--success); }
+
+    .callout {
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 18px 0;
+      font-size: 14px;
+    }
+
+    .callout-info {
+      background: var(--primary-light);
+      border: 1px solid #bfdbfe;
+      color: #1e40af;
+    }
+
+    .callout-warn {
+      background: var(--warning-light);
+      border: 1px solid #fde68a;
+      color: #92400e;
+    }
+
+    .callout-danger {
+      background: var(--danger-light);
+      border: 1px solid #fecaca;
+      color: #991b1b;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid var(--border-color);
+      padding: 10px 14px;
+      text-align: left;
+    }
+
+    th {
+      background: #f1f5f9;
+      font-weight: 600;
+    }
+
+    pre {
+      background: var(--code-bg);
+      color: var(--code-text);
+      padding: 18px 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 13.5px;
+      line-height: 1.55;
+      margin: 16px 0;
+    }
+
+    code {
+      font-family: inherit;
+    }
+
+    .inline-code {
+      background: #f1f5f9;
+      color: #e11d48;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: ui-monospace, monospace;
+    }
+
+    .tree-box {
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      padding: 16px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 13.5px;
+      line-height: 1.6;
+    }
+
+    footer {
+      margin-top: 48px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border-color);
+      font-size: 13px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>多 Agent 协同与交叉校验体系规范指南</h1>
+    <div class="subtitle">面向 WorkBuddy、Trae、Codex、QClaw、OpenClaw 的文件总线协作与门禁规范</div>
+  </header>
+
+  <div class="callout callout-info">
+    <strong>核心设计思想：</strong>不追求 Agent 之间建立复杂、脆弱的网络实时通信，而是通过统一的<strong>「操作系统文件总线」</strong>以及<strong>「不可变单一事实源」</strong>，将各个独立 Agent 编排为类似建筑工程「设计 ➔ 施工 ➔ 监理」的三权分立生产流水线。
+  </div>
+
+  <h2>一、 核心角色分工与职责定义</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Agent</th>
+        <th>职责定位</th>
+        <th>核心任务</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>WorkBuddy</strong></td>
+        <td><span class="badge badge-blue">主控架构师 / 监理处</span></td>
+        <td>解析项目原始材料，按规范制定《内容架构包》；实行背对背穿透审计、签发校验单并执行归档。</td>
+      </tr>
+      <tr>
+        <td><strong>Trae</strong></td>
+        <td><span class="badge badge-blue">建造工程工 / 前置验资员</span></td>
+        <td>拿到任务必须先反查原始件验资；验证无误后负责长篇排版、结构化正文扩写，具备抛出《_异议单》熔断权。</td>
+      </tr>
+      <tr>
+        <td><strong>QClaw / OpenClaw</strong></td>
+        <td><span class="badge badge-blue">知识档案工 / 采集工</span></td>
+        <td>负责维护共享知识库索引、结构化标签体系；负责外部非结构化网页或文件的采集落盘。</td>
+      </tr>
+      <tr>
+        <td><strong>Codex</strong></td>
+        <td><span class="badge badge-blue">专家算法脚本工</span></td>
+        <td>编写格式转换、文档排版（如 python-docx）或批处理校验辅助脚本。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>二、 目录规范与路径映射矩阵（.agentrules）</h2>
+  <p>在每个项目根目录中维护统一的 <span class="inline-code">.agentrules</span>，确保所有 Agent 统一通过别名索引真实路径，避免跨系统路径崩溃：</p>
+
+  <pre><code>---
+# ==============================================================================
+# 核心路径映射矩阵 (Path Mapping Matrix)
+# 铁律：所有路径统一使用正斜杠 "/"，严禁使用 "\" 转义字符
+# ==============================================================================
+path_mappings:
+  # [公共知识库] 全局唯一真理源（制度/标准/规范/模板，只读不可篡改）
+  GLOBAL_KNOWLEDGE_BASE:
+    alias: "@KB"
+    abs_path: "E:/工作/📚 通用知识库"
+    sub_modules:
+      standards: "E:/工作/📚 通用知识库/01_标准与法规"
+      rules: "E:/工作/📚 通用知识库/02_企业规范与制度"
+      templates: "E:/工作/📚 通用知识库/03_官方交付模版"
+    permissions: "READ_ONLY"
+
+  # [当前项目工作区] 本次文档任务专属上下文（事实输入与成果输出）
+  CURRENT_PROJECT:
+    alias: "@PROJECT"
+    abs_path: "E:/工作/📁 项目集/2026_XX客户项目"
+    sub_dirs:
+      inbox_raw: "./00_原始材料"       # 专属客户资料、会议纪要、参数（只读）
+      specs: "./01_SPECS"             # 任务架构包、交叉校验单
+      trae_staging: "./02_Trae交付"   # Trae施工草稿、异议单
+      final_delivery: "./03_最终交付" # 终审归档目录
+    permissions: "READ_WRITE"
+
+quality_gate:
+  lock_failed_files: true             # 校验未通过时系统自动加只读写保护锁
+  strict_source_tracing: true         # 必须严格标注出处（如 @KB/standards/GB-xxx.md P.12）
+  error_threshold: 0                  # 容错阈值为 0，有 1 项未打钩即触发拦截
+---
+
+# Agent 协作与路径索引最高行为准则
+1. 知识库引用：必须且只能使用前缀 @KB/子模块/文件名#条款
+2. 项目材料引用：必须且只能使用前缀 @PROJECT/inbox_raw/文件名#页码
+3. 单一事实源原则：项目事实的唯一真理是 00_原始材料/，规范引用的唯一真理是 📚通用知识库/。</code></pre>
+
+  <h2>三、 双盲穿透互核任务流（Anti-Cascading Error）</h2>
+  <div class="callout callout-warn">
+    <strong>盲从与级联错误防御铁律：</strong>
+    <ol style="margin-bottom: 0;">
+      <li><strong>Trae 动笔前必须前置核验：</strong>严禁无条件服从上游架构包，必须先抽查 00_原始材料 与 @KB 原文。一旦发现上游写错，必须出具《_架构异议.md》停工。</li>
+      <li><strong>WorkBuddy 回核实行背对背盲审：</strong>严禁拿自己之前写的架构包审稿，必须直接穿透回溯原始材料逐项核对。</li>
+    </ol>
+  </div>
+
+  <h3>标准协作时序图解</h3>
+  <div class="tree-box">
+    [用户下达指令] ➔ 「依据本项目 00_原始材料 与通用知识库规范，生成《XX实施方案》内容架构包」<br>
+    &nbsp;&nbsp;│<br>
+    &nbsp;&nbsp;▼<br>
+    【Step 1 · 架构制定】 WorkBuddy 产出《01_SPECS/XX-内容架构包.md》（锁定出处页码与标准条款全文）<br>
+    &nbsp;&nbsp;│ (用户复制首行指令至 Trae)<br>
+    &nbsp;&nbsp;▼<br>
+    【Step 2 · 验资与施工】 Trae 查验 @PROJECT/inbox_raw 与 @KB 原文<br>
+    &nbsp;&nbsp;├─ [发现有误] ➔ 写入《02_Trae交付/_架构异议.md》，任务熔断挂起<br>
+    &nbsp;&nbsp;└─ [核验无误] ➔ 规范排版扩写，产出《02_Trae交付/XX方案_v1.docx》<br>
+    &nbsp;&nbsp;│ (用户对 WorkBuddy 说「回核」)<br>
+    &nbsp;&nbsp;▼<br>
+    【Step 3 · 穿透校验】 WorkBuddy 依据原始件逐项填报《01_SPECS/XX方案-校验.md》<br>
+    &nbsp;&nbsp;├─ [未全打钩] ➔ 自动锁定《02_Trae交付/XX方案_v1.docx》为只读，触发系统桌面报警<br>
+    &nbsp;&nbsp;└─ [全部勾选] ➔ 自动解除锁定，移入《03_最终交付/XX方案_正式版.docx》，归档完成
+  </div>
+
+  <h2>四、 交叉校验单标准模板（01_SPECS/_校验-template.md）</h2>
+  <p>每次复核时必须生成的刚性工单，每一个复选框都必须经过物理调阅原文核对：</p>
+
+  <pre><code>---
+task_id: "TASK-202609-001"
+target_file: "02_Trae交付/XX项目方案_v1.docx"
+checker_agent: "WorkBuddy"
+verification_status: "PENDING"  # PENDING / PASSED / FAILED
+timestamp: "2026-09-15T08:00:00"
+---
+
+# 严格穿透交叉校验单
+
+## 一、 知识库标准引用穿透校验（逐项对照 📚通用知识库）
+- [ ] **条款存在性**：引用的《通用规范》条款在知识库中真实存在（文件与页码定位吻合）。
+- [ ] **语义保真度**：引用的规范要求与知识库原文完全一致，无断章取义或曲解。
+- [ ] **版本时效性**：引用的规范为知识库中的有效版本，未引用废止条款。
+
+## 二、 本项目专属事实穿透校验（逐项对照 00_原始材料）
+- [ ] **主体信息**：项目名称、客户全称、合同主体与原始文件 P.1 严格一致。
+- [ ] **参数指标**：交付周期、核心量化指标、金额与原始材料 100% 匹配。
+- [ ] **演算核实**：若有数据换算，复核者已独立演算至少 2 处，结果无误。
+
+## 三、 排版与敏感信息校验
+- [ ] **排版合规**：正文字体、字号、首行缩进符合模版规范，附表齐全。
+- [ ] **无幻觉占位符**：全文无 `[待补充]`、`undefined` 或残留提示词痕迹。
+
+---
+## 四、 异议明细（若未全打钩，必须填写退回原因）
+> 异常记录：第 2 节交付日期写为 11-30，与 00_原始材料/会议纪要.pdf P.3 要求的 12-31 不符。</code></pre>
+
+  <h2>五、 自动化门禁与文件加锁哨兵（gatekeeper.py）</h2>
+  <p>轻量 Python 哨兵脚本，监听 <span class="inline-code">01_SPECS/</span> 目录，未 100% 通过即打上只读锁并弹窗报警：</p>
+
+  <pre><code>import os, sys, re, time, shutil, subprocess
+from pathlib import Path
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+DIR_SPECS = PROJECT_ROOT / "01_SPECS"
+DIR_TRAE = PROJECT_ROOT / "02_Trae交付"
+DIR_FINAL = PROJECT_ROOT / "03_最终交付"
+
+def notify(title, msg):
+    if sys.platform == "win32":
+        cmd = f"[reflection.assembly]::loadwithpartialname('System.Windows.Forms') | Out-Null; $n = new-object system.windows.forms.notifyicon; $n.icon = [system.drawing.systemicons]::Warning; $n.visible = $true; $n.showballoontip(8000, '{title}', '{msg}', 2)"
+        subprocess.run(["powershell", "-Command", cmd], capture_output=True)
+    elif sys.platform == "darwin":
+        os.system(f'osascript -e \'display notification "{msg}" with title "{title}"\'')
+
+def set_readonly_lock(path: Path, readonly: bool):
+    if not path.exists(): return
+    if sys.platform == "win32":
+        os.system(f'attrib {"+R" if readonly else "-R"} "{path}"')
+    else:
+        path.chmod(0o444 if readonly else 0o644)
+
+def handle_audit(audit_path: Path):
+    time.sleep(1) # 等待文件落盘
+    content = audit_path.read_text(encoding="utf-8")
+    all_boxes = re.findall(r'- \[( |x|X)\]', content)
+    checked_boxes = re.findall(r'- \[(x|X)\]', content)
+    
+    target_match = re.search(r'target_file:\s*["\']?(.*?)["\']?\s*$', content, re.M)
+    if not target_match: return
+    target_file = PROJECT_ROOT / target_match.group(1).strip()
+    
+    if len(all_boxes) > 0 and len(checked_boxes) == len(all_boxes):
+        # 全部通过 -> 解锁并移入最终交付
+        DIR_FINAL.mkdir(exist_ok=True)
+        set_readonly_lock(target_file, False)
+        dest = DIR_FINAL / target_file.name.replace("_v1", "_正式版")
+        shutil.move(str(target_file), str(dest))
+        notify("✅ 校验全部通过", f"{target_file.name} 已归档至 03_最终交付/")
+    else:
+        # 存在未打钩项 -> 锁定文件并警告
+        set_readonly_lock(target_file, True)
+        missing = len(all_boxes) - len(checked_boxes)
+        notify("🚫 校验未通过！文件已锁定", f"{target_file.name} 存在 {missing} 处与知识库/原始件不符，已被只读锁定！")
+
+class Watcher(FileSystemEventHandler):
+    def on_modified(self, event):
+        if event.src_path.endswith("-校验.md"): handle_audit(Path(event.src_path))
+    def on_created(self, event):
+        if event.src_path.endswith("-校验.md"): handle_audit(Path(event.src_path))
+
+if __name__ == "__main__":
+    observer = Observer()
+    observer.schedule(Watcher(), str(DIR_SPECS), recursive=False)
+    observer.start()
+    try:
+        while True: time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()</code></pre>
+
+  <h2>六、 日常极简使用手册（你只需执行的动作）</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>阶段</th>
+        <th>操作动作</th>
+        <th>系统与 Agent 响应</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. 下达启动</strong></td>
+        <td>对 WorkBuddy 说：<br><em>「依据本项目 00_原始材料 与通用知识库，出具 XX方案 的架构包」</em></td>
+        <td>WorkBuddy 自动索引材料与知识库，产出带有 Trae 启动指令的《01_SPECS/XX-内容架构包.md》。</td>
+      </tr>
+      <tr>
+        <td><strong>2. 唤醒施工</strong></td>
+        <td>打开 Trae，直接粘贴内容包第 1 行给出的唤起指令</td>
+        <td>Trae 自动前置验资。无异议后完成正文编排，产出《02_Trae交付/XX方案_v1.docx》。</td>
+      </tr>
+      <tr>
+        <td><strong>3. 穿透回核</strong></td>
+        <td>对 WorkBuddy 说：<br><em>「回核 XX方案 初稿」</em></td>
+        <td>WorkBuddy 背对背比对知识库和原始件，填写校验单。哨兵自动介入：通过则自动归档，失败则自动加锁并弹窗报警。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <footer>
+    多 Agent 协同与交叉校验规范 · 自动生成参考文档
+  </footer>
+</div>
+
+</body>
+</html>

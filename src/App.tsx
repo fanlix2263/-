@@ -1,295 +1,147 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
+import { useState } from 'react';
+import { StampConfig } from './types';
+import { StampSettingsPanel } from './components/StampSettingsPanel';
+import { DocumentViewer } from './components/DocumentViewer';
+import { FontLearnedCard } from './components/FontLearnedCard';
+import { Stamp, CheckCircle, FileCheck } from 'lucide-react';
 
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Check, Sparkles, AlertCircle } from 'lucide-react';
-import { ColorItem, SavedPalette } from './types';
-import { createColorItem, getRandomPleasantHex } from './utils/colorMath';
-import { Navbar } from './components/Navbar';
-import { PaletteGenerator } from './components/PaletteGenerator';
-import { ImageExtractor } from './components/ImageExtractor';
-import { MockupPreview } from './components/MockupPreview';
-import { ExportModal } from './components/ExportModal';
-import { ColorDetailModal } from './components/ColorDetailModal';
-import { SavedPalettesView } from './components/SavedPalettesModal';
-
-const INITIAL_HEXES = ['#4F46E5', '#06B6D4', '#10B981', '#1E293B', '#F8FAFC'];
-const STORAGE_KEY = 'colorcraft_saved_palettes_v1';
-
-const DEFAULT_SEEDED_PALETTES: SavedPalette[] = [
-  {
-    id: 'seed-tech',
-    name: '未来矩阵科技蓝',
-    colors: ['#0F172A', '#0284C7', '#38BDF8', '#818CF8', '#F8FAFC'],
-    createdAt: Date.now() - 3600000 * 24 * 3,
-    source: 'generator',
-    tags: ['科技', '暗黑'],
-  },
-  {
-    id: 'seed-warm',
-    name: '托斯卡纳落日暖陶',
-    colors: ['#78350F', '#B45309', '#F59E0B', '#FDE68A', '#FFFBEB'],
-    createdAt: Date.now() - 3600000 * 24 * 2,
-    source: 'generator',
-    tags: ['暖色', '自然'],
-  },
-  {
-    id: 'seed-minimal',
-    name: '北欧高冷极简灰',
-    colors: ['#18181B', '#52525B', '#A1A1AA', '#E4E4E7', '#FAFAFA'],
-    createdAt: Date.now() - 3600000 * 24 * 1,
-    source: 'generator',
-    tags: ['极简', '冷色'],
-  },
-];
+const DEFAULT_STAMP_CONFIG: StampConfig = {
+  fontSizeMm: 5.0, // 学习到的标准档案机械打码机 5.0mm
+  fontFamily: 'Bodoni Moda',
+  fontWeight: '800',
+  inkColor: '#101010', // 经典高饱和黑色油墨
+  inkBleed: 0.35, // 轻微纸张纤维晕墨
+  inkPressure: 1.05, // 饱满下压力度
+  stampJitter: true, // 真实手工下压微晃动仿真 (±1.5mm, ±0.7度)
+  showMachineArtifacts: true, // 仿真机械字轮伴生微点/定位印迹
+  positionMode: 'odd-right-even-left', // 默认情况1：单号在右下角，双号在左下角
+  leftMarginPercent: 4.8, // 双号在左下角时的左边距 4.8%
+  rightMarginPercent: 4.8, // 距右边缘 4.8% (与用户样本 1~6 页及 8~14 页右下角位置一致)
+  bottomMarginPercent: 3.6, // 距底边缘 3.6%
+  rotation: 0.2, // 微量自然倾角
+  prefix: '',
+  suffix: '',
+  digitPadLength: 0, // 默认自动消零
+};
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'generator' | 'extractor' | 'library'>('generator');
-  const [colors, setColors] = useState<ColorItem[]>(() =>
-    INITIAL_HEXES.map((hex) => createColorItem(hex, false))
-  );
+  const [stampConfig, setStampConfig] = useState<StampConfig>(DEFAULT_STAMP_CONFIG);
+  const [pageNumber, setPageNumber] = useState<string>('14');
+  const [userImage, setUserImage] = useState<string | null>(null);
+  const [demoOrientation, setDemoOrientation] = useState<'portrait' | 'landscape'>('landscape');
 
-  // Saved palettes in localStorage
-  const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
+  const handleUploadImage = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        setUserImage(e.target.result as string);
       }
-    } catch {
-      // Fallback
-    }
-    return DEFAULT_SEEDED_PALETTES;
-  });
-
-  // Modals state
-  const [isExportOpen, setIsExportOpen] = useState(false);
-  const [exportTargetColors, setExportTargetColors] = useState<ColorItem[]>(colors);
-  const [inspectedColor, setInspectedColor] = useState<ColorItem | null>(null);
-
-  // Toast feedback state
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 2500);
-  };
-
-  // Sync saved palettes to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(savedPalettes));
-    } catch (e) {
-      console.error('Failed to save to localStorage', e);
-    }
-  }, [savedPalettes]);
-
-  // Handle saving current palette
-  const handleSavePalette = () => {
-    const newSaved: SavedPalette = {
-      id: 'palette-' + Date.now(),
-      name: `配色方案 ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-      colors: colors.map((c) => c.hex),
-      createdAt: Date.now(),
-      source: 'generator',
-      tags: [],
     };
-    setSavedPalettes((prev) => [newSaved, ...prev]);
-    showToast('已收藏调色板！可前往「预设与收藏」打上标签分类。');
+    reader.readAsDataURL(file);
   };
 
-  // Handle deleting saved palette
-  const handleDeleteSaved = (id: string) => {
-    setSavedPalettes((prev) => prev.filter((p) => p.id !== id));
-    showToast('已移除该调色板。');
-  };
-
-  // Handle updating tags for a saved palette
-  const handleUpdatePaletteTags = (id: string, tags: string[]) => {
-    setSavedPalettes((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, tags } : p))
-    );
-    showToast('已更新调色板标签！');
-  };
-
-  // Handle loading palette into workbench
-  const handleLoadPalette = (newColors: ColorItem[]) => {
-    setColors(newColors);
-    setActiveTab('generator');
-    showToast('已载入调色板至编辑器！');
-  };
-
-  // Handle applying extracted colors from image
-  const handleApplyExtractedPalette = (extractedColors: ColorItem[]) => {
-    setColors(extractedColors);
-    setActiveTab('generator');
-    showToast(`已成功同步 ${extractedColors.length} 种提取色至调色板编辑器！`);
-  };
-
-  // Handle adding a single color picked from image
-  const handleAddSingleColor = (color: ColorItem) => {
-    setColors((prev) => {
-      if (prev.length >= 10) {
-        return [...prev.slice(1), color];
-      }
-      return [...prev, color];
-    });
-    showToast(`已吸取 ${color.hex} 并加入调色板！`);
-  };
-
-  // Open export with custom colors (e.g. from preset)
-  const handleOpenExportWithColors = (target: ColorItem[]) => {
-    setExportTargetColors(target);
-    setIsExportOpen(true);
-  };
-
-  // Open export with current colors
-  const handleOpenExportCurrent = () => {
-    setExportTargetColors(colors);
-    setIsExportOpen(true);
-  };
-
-  // Quick spacebar/generate trigger from navbar
-  const handleQuickGenerate = () => {
-    setColors((prev) =>
-      prev.map((c) => (c.locked ? c : createColorItem(getRandomPleasantHex(), false)))
-    );
+  const handleResetPreset = () => {
+    setStampConfig(DEFAULT_STAMP_CONFIG);
+    setPageNumber('14');
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 flex flex-col justify-between selection:bg-stone-200">
-      {/* Top Navigation */}
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        colors={colors}
-        onOpenExport={handleOpenExportCurrent}
-        onQuickGenerate={handleQuickGenerate}
-        savedCount={savedPalettes.length}
-      />
+    <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans">
+      {/* 顶部主导航栏 */}
+      <header className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-2xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white shadow-sm">
+                <Stamp className="w-5 h-5 text-blue-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-base font-bold text-slate-900 leading-tight">
+                    档案打码机 · 工程文档页码加盖系统
+                  </h1>
+                  <span className="text-[11px] font-semibold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200">
+                    合金字轮古典衬线体 (5.0mm)
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500">
+                  复刻广西融安县水库工程文档右下角跳号机印迹，支持单张与批量加盖
+                </p>
+              </div>
+            </div>
 
-      {/* Main Workspace Container */}
-      <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-8 flex-1 space-y-8">
-        {/* Animated Tab Views */}
-        <AnimatePresence mode="wait">
-          {activeTab === 'generator' && (
-            <motion.div
-              key="generator-view"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.25 }}
-              className="space-y-8"
-            >
-              {/* Palette Generator Strip & Controls */}
-              <PaletteGenerator
-                colors={colors}
-                setColors={setColors}
-                onInspectColor={(c) => setInspectedColor(c)}
-                onSavePalette={handleSavePalette}
-                onOpenExport={handleOpenExportCurrent}
-              />
-
-              {/* Real-time Designer Mockup Preview */}
-              <MockupPreview colors={colors} />
-            </motion.div>
-          )}
-
-          {activeTab === 'extractor' && (
-            <motion.div
-              key="extractor-view"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.25 }}
-            >
-              <ImageExtractor
-                onApplyPalette={handleApplyExtractedPalette}
-                onAddSingleColor={handleAddSingleColor}
-              />
-            </motion.div>
-          )}
-
-          {activeTab === 'library' && (
-            <motion.div
-              key="library-view"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.25 }}
-            >
-              <SavedPalettesView
-                savedPalettes={savedPalettes}
-                onLoadPalette={handleLoadPalette}
-                onDeleteSaved={handleDeleteSaved}
-                onOpenExportWithColors={handleOpenExportWithColors}
-                onUpdateTags={handleUpdatePaletteTags}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
-
-      {/* Footer */}
-      <footer
-        id="app-footer"
-        className="w-full bg-white border-t border-stone-200 py-6 mt-12 text-xs text-stone-500"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-stone-800">ColorCraft Studio</span>
-            <span>·</span>
-            <span>专业设计师色彩提取与调色板生成系统</span>
-          </div>
-
-          <div className="flex items-center gap-4 text-stone-400 text-[11px]">
-            <span>按空格键随时刷新调色板</span>
-            <span>·</span>
-            <span>支持 HEX / CSS 变量 / Tailwind / SCSS / SVG 导出</span>
+            {/* 快速状态指示 */}
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-600 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                <CheckCircle className="w-4 h-4 text-emerald-600" />
+                <span>当前加盖目标：</span>
+                <span className="font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded-sm border border-slate-200">
+                  页码 {pageNumber}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
-      </footer>
+      </header>
 
-      {/* Modals & Slide-outs */}
-      <ExportModal
-        isOpen={isExportOpen}
-        onClose={() => setIsExportOpen(false)}
-        colors={exportTargetColors}
-      />
+      {/* 主工作区 */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* 左侧控制栏与学习成果 (4 列) */}
+          <div className="lg:col-span-4 space-y-6">
+            {/* 1. 打码参数面板 */}
+            <StampSettingsPanel
+              config={stampConfig}
+              onChange={setStampConfig}
+              currentPageNumber={pageNumber}
+              onPageNumberChange={setPageNumber}
+              onResetToLearnedPreset={handleResetPreset}
+              userImage={userImage}
+              demoOrientation={demoOrientation}
+            />
 
-      <ColorDetailModal
-        color={inspectedColor}
-        onClose={() => setInspectedColor(null)}
-        onSelectTint={(tintHex) => {
-          if (inspectedColor) {
-            setColors((prev) =>
-              prev.map((c) => (c.id === inspectedColor.id ? createColorItem(tintHex, c.locked) : c))
-            );
-            setInspectedColor((prev) => (prev ? createColorItem(tintHex, prev.locked) : null));
-          }
-        }}
-      />
+            {/* 2. 字体与字模学习成果卡片 */}
+            <FontLearnedCard />
 
-      {/* Floating Toast notification */}
-      <AnimatePresence>
-        {toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 bg-stone-900 text-white text-xs font-medium rounded-xl shadow-xl border border-stone-800"
-          >
-            <Check className="w-4 h-4 text-emerald-400" />
-            <span>{toastMessage}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            {/* 3. 使用指引 */}
+            <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 text-xs space-y-2 text-slate-600">
+              <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                <FileCheck className="w-4 h-4 text-blue-600" />
+                <span>操作指南</span>
+              </div>
+              <ul className="list-disc pl-4 space-y-1 text-slate-500">
+                <li>
+                  <strong>当前演示页</strong>：已自动根据工程图纸在对应角标打上页码（如单号在右下、双号在左下）。
+                </li>
+                <li>
+                  <strong>批量加盖与 ZIP 导出</strong>：在左侧设置起始页码与结束页码（如 8 ~ 14 页），点击「批量加盖并下载 ZIP 压缩包」，即可一键批量渲染并打包下载全部图纸。
+                </li>
+                <li>
+                  <strong>打码其他图片</strong>：点击右上角「上传其他图纸」或直接将您的 JPG/PNG 拖入画布，即可自动打上页码。
+                </li>
+                <li>
+                  <strong>高清输出</strong>：点击「下载加盖高清图」可导出单张当前图纸，带手工机械油墨印迹的印刷级成果。
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* 右侧大图预览与交互查看器 (8 列) */}
+          <div className="lg:col-span-8 flex flex-col">
+            <DocumentViewer
+              config={stampConfig}
+              onConfigChange={setStampConfig}
+              pageNumber={pageNumber}
+              onPageNumberChange={setPageNumber}
+              userImage={userImage}
+              onUploadImage={handleUploadImage}
+              onClearCustomImage={() => setUserImage(null)}
+              demoOrientation={demoOrientation}
+              onToggleDemoOrientation={setDemoOrientation}
+            />
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
