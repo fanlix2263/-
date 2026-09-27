@@ -1,6 +1,8 @@
 {
-  "name": "档案打码机 - 工程图纸页码加盖工具",
-  "description": "专为工程档案、水利质检等技术文件设计的自动打码机/跳号机手工页码加盖与仿真工具，精准复刻5mm机械金属衬线体字模、油墨微晕与手工压印效果。",
+  "name": "WorkBuddy 本地文档脱敏方案可行性评估与测试实验室",
+  "description": "针对 Windows 11 + i3-8100 + 8GB RAM 环境下基于 Presidio 与 WorkBuddy MCP 本地文档脱敏方案的全面可行性审计报告、致命Bug修复、中文PII交互式仿真与生产级代码生成系统。",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
